@@ -160,11 +160,24 @@ namespace Microsoft.AspNetCore.SignalR.Tests
                 try
                 {
                     var receiveTcs = new TaskCompletionSource<byte[]>();
+                    var closeTcs = new TaskCompletionSource<byte[]>();
                     connection.Received += data =>
                     {
                         logger.LogInformation("Received {length} byte message", data.Length);
                         receiveTcs.TrySetResult(data);
                         return Task.CompletedTask;
+                    };
+                    connection.Closed += e =>
+                    {
+                        logger.LogInformation("Connection closed");
+                        if (e != null)
+                        {
+                            closeTcs.TrySetException(e);
+                        }
+                        else
+                        {
+                            closeTcs.TrySetResult(null);
+                        }
                     };
 
                     logger.LogInformation("Starting connection to {url}", url);
@@ -180,6 +193,8 @@ namespace Microsoft.AspNetCore.SignalR.Tests
                     var receivedData = await receiveTcs.Task.OrTimeout();
                     Assert.Equal(message, Encoding.UTF8.GetString(receivedData));
                     logger.LogInformation("Completed receive");
+
+                    await closeTcs.Task.OrTimeout();
                 }
                 finally
                 {
