@@ -141,7 +141,7 @@ namespace Microsoft.AspNetCore.SignalR.Tests
         {
             get
             {
-                yield return new object[] { new string('A', 5 * 4096) };
+                //yield return new object[] { new string('A', 5 * 4096) };
                 yield return new object[] { new string('A', 1000 * 4096 + 32) };
             }
         }
@@ -151,56 +151,59 @@ namespace Microsoft.AspNetCore.SignalR.Tests
         [MemberData(nameof(MessageSizesData))]
         public async Task ConnectionCanSendAndReceiveDifferentMessageSizesWebSocketsTransport(string message)
         {
-            using (StartLog(out var loggerFactory, testName: $"ConnectionCanSendAndReceiveDifferentMessageSizesWebSocketsTransport_{message.Length}"))
+            for (int i = 0; i < 1000; ++i)
             {
-                var logger = loggerFactory.CreateLogger<EndToEndTests>();
-
-                var url = _serverFixture.BaseUrl + "/echo";
-                var connection = new HttpConnection(new Uri(url), loggerFactory);
-                try
+                using (StartLog(out var loggerFactory, testName: $"ConnectionCanSendAndReceiveDifferentMessageSizesWebSocketsTransport_{message.Length}"))
                 {
-                    var receiveTcs = new TaskCompletionSource<byte[]>();
-                    var closeTcs = new TaskCompletionSource<byte[]>();
-                    connection.Received += data =>
+                    var logger = loggerFactory.CreateLogger<EndToEndTests>();
+
+                    var url = _serverFixture.BaseUrl + "/echo";
+                    var connection = new HttpConnection(new Uri(url), loggerFactory);
+                    try
                     {
-                        logger.LogInformation("Received {length} byte message", data.Length);
-                        receiveTcs.TrySetResult(data);
-                        return Task.CompletedTask;
-                    };
-                    connection.Closed += e =>
+                        var receiveTcs = new TaskCompletionSource<byte[]>();
+                        var closeTcs = new TaskCompletionSource<byte[]>();
+                        connection.Received += data =>
+                        {
+                            logger.LogInformation("Received {length} byte message", data.Length);
+                            receiveTcs.TrySetResult(data);
+                            return Task.CompletedTask;
+                        };
+                        connection.Closed += e =>
+                        {
+                            logger.LogInformation("Connection closed");
+                            if (e != null)
+                            {
+                                closeTcs.TrySetException(e);
+                            }
+                            else
+                            {
+                                closeTcs.TrySetResult(null);
+                            }
+                        };
+
+                        logger.LogInformation("Starting connection to {url}", url);
+                        await connection.StartAsync().OrTimeout();
+                        logger.LogInformation("Started connection to {url}", url);
+
+                        var bytes = Encoding.UTF8.GetBytes(message);
+                        logger.LogInformation("Sending {length} byte message", bytes.Length);
+                        await connection.SendAsync(bytes).OrTimeout();
+                        logger.LogInformation("Sent message", bytes.Length);
+
+                        logger.LogInformation("Receiving message");
+                        var receivedData = await receiveTcs.Task.OrTimeout();
+                        Assert.Equal(message, Encoding.UTF8.GetString(receivedData));
+                        logger.LogInformation("Completed receive");
+
+                        await closeTcs.Task.OrTimeout();
+                    }
+                    finally
                     {
-                        logger.LogInformation("Connection closed");
-                        if (e != null)
-                        {
-                            closeTcs.TrySetException(e);
-                        }
-                        else
-                        {
-                            closeTcs.TrySetResult(null);
-                        }
-                    };
-
-                    logger.LogInformation("Starting connection to {url}", url);
-                    await connection.StartAsync().OrTimeout();
-                    logger.LogInformation("Started connection to {url}", url);
-
-                    var bytes = Encoding.UTF8.GetBytes(message);
-                    logger.LogInformation("Sending {length} byte message", bytes.Length);
-                    await connection.SendAsync(bytes).OrTimeout();
-                    logger.LogInformation("Sent message", bytes.Length);
-
-                    logger.LogInformation("Receiving message");
-                    var receivedData = await receiveTcs.Task.OrTimeout();
-                    Assert.Equal(message, Encoding.UTF8.GetString(receivedData));
-                    logger.LogInformation("Completed receive");
-
-                    await closeTcs.Task.OrTimeout();
-                }
-                finally
-                {
-                    logger.LogInformation("Disposing Connection");
-                    await connection.DisposeAsync().OrTimeout();
-                    logger.LogInformation("Disposed Connection");
+                        logger.LogInformation("Disposing Connection");
+                        await connection.DisposeAsync().OrTimeout();
+                        logger.LogInformation("Disposed Connection");
+                    }
                 }
             }
         }
