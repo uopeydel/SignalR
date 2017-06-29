@@ -169,18 +169,18 @@ namespace Microsoft.AspNetCore.SignalR.Tests
                             receiveTcs.TrySetResult(data);
                             return Task.CompletedTask;
                         };
-                        connection.Closed += e =>
-                        {
-                            logger.LogInformation("Connection closed");
-                            if (e != null)
-                            {
-                                closeTcs.TrySetException(e);
-                            }
-                            else
-                            {
-                                closeTcs.TrySetResult(null);
-                            }
-                        };
+                        //connection.Closed += e =>
+                        //{
+                          //  logger.LogInformation("Connection closed");
+                            //if (e != null)
+                            //{
+                              //  closeTcs.TrySetException(e);
+                            //}
+                            //else
+                            //{
+                              //  closeTcs.TrySetResult(null);
+                          //  }
+                        //};
 
                         logger.LogInformation("Starting connection to {url}", url);
                         await connection.StartAsync().OrTimeout();
