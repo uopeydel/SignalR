@@ -196,7 +196,7 @@ namespace Microsoft.AspNetCore.SignalR.Tests
                         Assert.Equal(message, Encoding.UTF8.GetString(receivedData));
                         logger.LogInformation("Completed receive");
 
-                        await closeTcs.Task.OrTimeout();
+                        //await closeTcs.Task.OrTimeout();
                     }
                     finally
                     {
