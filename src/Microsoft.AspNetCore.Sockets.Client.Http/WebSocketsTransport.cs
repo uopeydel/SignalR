@@ -207,7 +207,6 @@ namespace Microsoft.AspNetCore.Sockets.Client
             _logger.LogInformation("Transport {0} is stopping", nameof(WebSocketsTransport));
 
             await CloseWebSocket();
-            _webSocket.Dispose();
 
             try
             {
@@ -217,6 +216,8 @@ namespace Microsoft.AspNetCore.Sockets.Client
             {
                 // exceptions have been handled in the Running task continuation by closing the channel with the exception
             }
+
+            _webSocket.Dispose();
 
             _logger.LogInformation("Transport {0} stopped", nameof(WebSocketsTransport));
         }
@@ -230,7 +231,7 @@ namespace Microsoft.AspNetCore.Sockets.Client
                 if (_webSocket.State != WebSocketState.Closed)
                 {
                     _logger.LogInformation("Closing webSocket");
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                    await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
                 }
             }
             catch (Exception ex)
