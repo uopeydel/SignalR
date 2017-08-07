@@ -21,6 +21,7 @@ namespace Microsoft.AspNetCore.Sockets.Client
         private readonly ILogger _logger;
         private readonly CancellationTokenSource _transportCts = new CancellationTokenSource();
         private readonly ServerSentEventsMessageParser _parser = new ServerSentEventsMessageParser();
+        private readonly PipeFactory _pipelineFactory = new PipeFactory();
         private string _connectionId;
 
         private Channel<byte[], SendMessage> _application;
@@ -80,7 +81,14 @@ namespace Microsoft.AspNetCore.Sockets.Client
             var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
             var stream = await response.Content.ReadAsStreamAsync();
-            var pipelineReader = stream.AsPipelineReader(cancellationToken);
+            var pipe = _pipelineFactory.Create();
+
+            _ = Task.Run(async () =>
+            {
+                await stream.CopyToEndAsync(pipe.Writer);
+            });
+
+            var pipelineReader = pipe.Reader;
             var readCancellationRegistration = cancellationToken.Register(
                 reader => ((IPipeReader)reader).CancelPendingRead(), pipelineReader);
             try
