@@ -54,4 +54,21 @@ describe('connection', () => {
                 });
         });
     });
+
+    it(`msgpack test`, () => {
+
+        let hubMessage = {
+            type: 1,
+            invocationId: "abc",
+            target: "method",
+            arguments: [1, "123"],
+            nonblocking: true
+        };
+
+        var msgPackProtocol = new signalRMsgPack.MessagePackHubProtocol();
+        var msg = msgPackProtocol.writeMessage(hubMessage);
+        var x = msgPackProtocol.parseMessages(msg);
+
+        expect(x.item).toEqual(hubMessage.item);
+    });
 });
