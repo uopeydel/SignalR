@@ -11,7 +11,9 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Channels;
 using Microsoft.AspNetCore.Client.Tests;
 using Microsoft.AspNetCore.SignalR.Tests.Common;
+using Microsoft.AspNetCore.Sockets;
 using Microsoft.AspNetCore.Sockets.Client;
+using Microsoft.AspNetCore.Sockets.Internal;
 using Moq;
 using Moq.Protected;
 using Xunit;
@@ -55,13 +57,15 @@ namespace Microsoft.AspNetCore.SignalR.Client.Tests
                         new Uri("http://fakeuri.org"), channelConnection, TransferMode.Text, connectionId: string.Empty).OrTimeout();
 
                     await eventStreamTcs.Task.OrTimeout();
-                    await sseTransport.StopAsync().OrTimeout();
+                    var stop = sseTransport.StopAsync();
+                    copyToAsyncTcs.SetResult(0);
+                    await stop.OrTimeout();
                     await sseTransport.Running.OrTimeout();
                 }
             }
             finally
             {
-                copyToAsyncTcs.SetResult(0);
+                copyToAsyncTcs.TrySetResult(0);
             }
         }
 
@@ -81,6 +85,7 @@ namespace Microsoft.AspNetCore.SignalR.Client.Tests
                         .Setup(s => s.CopyToAsync(It.IsAny<Stream>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                         .Returns<Stream, int, CancellationToken>(async (stream, bufferSize, t) =>
                             {
+                                await Task.Yield();
                                 var buffer = Encoding.ASCII.GetBytes("data: 3:abc\r\n\r\n");
                                 while (!eventStreamCts.IsCancellationRequested)
                                 {
@@ -204,6 +209,7 @@ namespace Microsoft.AspNetCore.SignalR.Client.Tests
                 var exception = await Assert.ThrowsAsync<HttpRequestException>(() => sendTcs.Task.OrTimeout());
                 Assert.Contains("500", exception.Message);
 
+                copyToAsyncTcs.SetResult(0);
                 Assert.Same(exception, await Assert.ThrowsAsync<HttpRequestException>(() => sseTransport.Running.OrTimeout()));
             }
         }
@@ -246,6 +252,7 @@ namespace Microsoft.AspNetCore.SignalR.Client.Tests
 
                 connectionToTransport.Out.TryComplete(null);
 
+                copyToAsyncTcs.SetResult(0);
                 await sseTransport.Running.OrTimeout();
             }
         }

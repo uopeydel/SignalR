@@ -79,6 +79,9 @@ namespace Microsoft.AspNetCore.Sockets.Client.Internal
         private static readonly Action<ILogger, DateTime, string, Exception> _eventStreamEnded =
             LoggerMessage.Define<DateTime, string>(LogLevel.Debug, 13, "{time}: Connection Id {connectionId}: Server-Sent Event Stream ended.");
 
+        private static readonly Action<ILogger, DateTime, string, Exception> _closingReadError =
+            LoggerMessage.Define<DateTime, string>(LogLevel.Debug, 14, "{time}: Connection Id {connectionId}: Exception during read closure.");
+
         // Category: LongPollingTransport
         private static readonly Action<ILogger, DateTime, string, Exception> _closingConnection =
             LoggerMessage.Define<DateTime, string>(LogLevel.Debug, 13, "{time}: Connection Id {connectionId}: The server is closing the connection.");
@@ -320,6 +323,14 @@ namespace Microsoft.AspNetCore.Sockets.Client.Internal
             if (logger.IsEnabled(LogLevel.Debug))
             {
                 _eventStreamEnded(logger, DateTime.Now, connectionId, null);
+            }
+        }
+
+        public static void ClosingReadError(this ILogger logger, string connectionId, Exception exception)
+        {
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                _closingReadError(logger, DateTime.Now, connectionId, exception);
             }
         }
 

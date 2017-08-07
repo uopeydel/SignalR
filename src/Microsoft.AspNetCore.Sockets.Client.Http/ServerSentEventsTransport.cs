@@ -83,10 +83,7 @@ namespace Microsoft.AspNetCore.Sockets.Client
             var stream = await response.Content.ReadAsStreamAsync();
             var pipe = _pipelineFactory.Create();
 
-            _ = Task.Run(async () =>
-            {
-                await stream.CopyToEndAsync(pipe.Writer);
-            });
+            var writeTask = stream.CopyToEndAsync(pipe.Writer);
 
             var pipelineReader = pipe.Reader;
             var readCancellationRegistration = cancellationToken.Register(
@@ -140,6 +137,16 @@ namespace Microsoft.AspNetCore.Sockets.Client
                 _transportCts.Cancel();
                 stream.Dispose();
                 _logger.ReceiveStopped(_connectionId);
+                pipe.Writer.Complete();
+
+                try
+                {
+                    await writeTask;
+                }
+                catch (Exception ex)
+                {
+                    _logger.ClosingReadError(_connectionId, ex);
+                }
             }
         }
 
